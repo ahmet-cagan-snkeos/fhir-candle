@@ -1,0 +1,20 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0-windowsservercore-ltsc2022 AS build-env
+ARG TARGETARCH
+
+WORKDIR /app
+
+# Copy everything else and build
+COPY . ./
+ARG RUNTIME_IDENTIFIER=x64
+
+RUN dotnet restore --ucr -a %RUNTIME_IDENTIFIER%  src/fhir-candle/fhir-candle.csproj
+RUN dotnet publish --framework net9.0 -a %RUNTIME_IDENTIFIER%  src/fhir-candle/fhir-candle.csproj -c Release -o out --no-restore
+
+# Build runtime image
+#FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble-chiseled
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-windowsservercore-ltsc2022
+EXPOSE 5826
+WORKDIR /app
+COPY --from=build-env /app/out .
+ENTRYPOINT ["dotnet", "fhir-candle.dll"]
+CMD ["-m", "1000"]
